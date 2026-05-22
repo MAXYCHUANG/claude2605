@@ -84,6 +84,22 @@ SUCCESS=0
 FAIL=0
 REPORT_PATHS=()
 SPOT_PRICE=""
+SNAPSHOT_MD=""
+STAMP=$(TZ=America/New_York date '+%Y%m%d_%H%M%S')
+
+# ── Intraday snapshot ──────────────────────────────────────────────────────
+SNAPSHOT_OUT="/tmp/${SYMBOL,,}_intraday_snapshot_${STAMP}.md"
+SNAP_OUT=""
+if SNAP_OUT=$(python3 "${CODEX_DIR}/scripts/us_stock_intraday_snapshot.py" "${SYMBOL}" \
+    --output "${SNAPSHOT_OUT}" 2>&1); then
+    echo "${SNAP_OUT}"
+    [[ -z "${SPOT_PRICE}" ]] && SPOT_PRICE=$(echo "${SNAP_OUT}" | grep "^SPOT_PRICE=" | cut -d= -f2-)
+    SNAPSHOT_MD="${SNAPSHOT_OUT}"
+    log "Intraday snapshot OK: $(basename "${SNAPSHOT_OUT}")"
+else
+    echo "${SNAP_OUT}"
+    log "WARN: intraday snapshot failed (continuing)"
+fi
 
 for EXPIRY in ${EXPIRIES}; do
     log "Fetching ${SYMBOL} expiry=${EXPIRY} ..."
@@ -117,10 +133,16 @@ fi
 RUN_DATE="$(TZ=America/New_York date '+%Y-%m-%d')"
 COMBINED_MD="/tmp/nvda_options_4expiry_${RUN_DATE}.md"
 
-# 合併所有到期層報告為一份 .md
+# 合併盤中快照 + 所有到期層報告為一份 .md
 {
     echo "# NVDA Options Chain — 4-Expiry Report ${RUN_DATE}"
     echo ""
+    if [[ -n "${SNAPSHOT_MD}" && -f "${SNAPSHOT_MD}" ]]; then
+        cat "${SNAPSHOT_MD}"
+        echo ""
+        echo "---"
+        echo ""
+    fi
     for RPATH in "${REPORT_PATHS[@]}"; do
         cat "${RPATH}"
         echo ""
