@@ -22,6 +22,28 @@ log() { echo "[$(TZ=America/New_York date '+%Y-%m-%d %H:%M:%S ET')] $*"; }
 
 log "=== NVDA intraday monitor: window=${WINDOW}m start ==="
 
+# ── 交易日判斷：Yahoo Finance 最後成交時間是否為今日（美東）──────────────
+if ! python3 - <<'PYEOF' 2>/dev/null
+import urllib.request, json, datetime
+try:
+    from zoneinfo import ZoneInfo; ET = ZoneInfo("America/New_York")
+except ImportError:
+    from datetime import timezone, timedelta; ET = timezone(timedelta(hours=-4))
+today = datetime.datetime.now(tz=ET).date()
+req = urllib.request.Request(
+    "https://query1.finance.yahoo.com/v8/finance/chart/NVDA?interval=1m&range=1d",
+    headers={"User-Agent": "Mozilla/5.0"})
+with urllib.request.urlopen(req, timeout=10) as r:
+    d = json.loads(r.read())
+last_ts = d["chart"]["result"][0]["meta"].get("regularMarketTime", 0)
+last_date = datetime.datetime.fromtimestamp(last_ts, tz=ET).date()
+exit(0 if last_date == today else 1)
+PYEOF
+then
+    log "Not a US trading day — skip"
+    exit 0
+fi
+
 set -a
 source "${CODEX_DIR}/.env.weather_email"
 set +a
