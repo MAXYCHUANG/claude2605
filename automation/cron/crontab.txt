@@ -64,3 +64,14 @@ CRON_TZ=Asia/Taipei
 # ==========================================
 CRON_TZ=Asia/Taipei
 0 18 * * 5 cd /home/yc5/workspace/filefold/claude2605 && bash scripts/cc_run_financial_stocks_weekly_email.sh >> log/cc_financial_stocks_weekly.log 2>&1
+
+# ==========================================
+# NVDA 盤中監控 (美東 09:35/09:45/10:00/11:00/12:00，工作日)
+# 開盤後 5m / 15m / 30m / 90m / 150m 各發一封 HTML 快報
+# ==========================================
+CRON_TZ=America/New_York
+35  9 * * 1-5 cd /home/yc5/workspace/filefold/claude2605 && bash scripts/cc_run_nvda_intraday_monitor.sh 5   >> log/cc_run_nvda_intraday_monitor.log 2>&1
+45  9 * * 1-5 cd /home/yc5/workspace/filefold/claude2605 && bash scripts/cc_run_nvda_intraday_monitor.sh 15  >> log/cc_run_nvda_intraday_monitor.log 2>&1
+0  10 * * 1-5 cd /home/yc5/workspace/filefold/claude2605 && bash scripts/cc_run_nvda_intraday_monitor.sh 30  >> log/cc_run_nvda_intraday_monitor.log 2>&1
+0  11 * * 1-5 cd /home/yc5/workspace/filefold/claude2605 && bash scripts/cc_run_nvda_intraday_monitor.sh 90  >> log/cc_run_nvda_intraday_monitor.log 2>&1
+0  12 * * 1-5 cd /home/yc5/workspace/filefold/claude2605 && bash scripts/cc_run_nvda_intraday_monitor.sh 150 >> log/cc_run_nvda_intraday_monitor.log 2>&1
