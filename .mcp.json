@@ -1,0 +1,34 @@
+{
+  "mcpServers": {
+    "fubon-market": {
+      "type": "stdio",
+      "command": "/home/yc5/workspace/filefold/claude2605/.venv-fubon/bin/python3",
+      "args": [
+        "/home/yc5/workspace/filefold/claude2605/scripts/cc_fubon_market_mcp_server.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/home/yc5/workspace/filefold/claude2605"
+      }
+    },
+    "us-bond": {
+      "type": "stdio",
+      "command": "/home/yc5/workspace/filefold/claude2605/.venv-fubon/bin/python3",
+      "args": [
+        "/home/yc5/workspace/filefold/claude2605/scripts/cc_us_bond_mcp_server.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/home/yc5/workspace/filefold/claude2605"
+      }
+    },
+    "report-sender": {
+      "type": "stdio",
+      "command": "/home/yc5/workspace/filefold/claude2605/.venv-fubon/bin/python3",
+      "args": [
+        "/home/yc5/workspace/filefold/claude2605/scripts/cc_report_sender_mcp_server.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/home/yc5/workspace/filefold/claude2605"
+      }
+    }
+  }
+}

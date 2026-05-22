@@ -1,0 +1,17 @@
+# 執行時產生的輸出，不納入版本控制
+log/
+docs/
+reports/
+
+# 憑證（真實檔案與 symlink 都排除）
+.env.fubon
+.env.weather_email
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv*/
+
+# Claude Code 本地設定
+.claude/
