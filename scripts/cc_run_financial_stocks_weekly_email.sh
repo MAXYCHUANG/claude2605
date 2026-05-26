@@ -38,7 +38,15 @@ fi
 # ── Stage 4: 寄信 ──────────────────────────────────────────────────
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] 寄信給 yc5780" >> "$LOG"
 
-cd "$CODEX"
+if [[ ! -d "${CODEX}" ]]; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: codex2605 directory not found: ${CODEX}" >> "$LOG"
+    exit 1
+fi
+if [[ ! -f "${CODEX}/.env.weather_email" ]]; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: .env.weather_email not found in ${CODEX}" >> "$LOG"
+    exit 1
+fi
+cd "${CODEX}"
 set -a
 source .env.weather_email
 set +a

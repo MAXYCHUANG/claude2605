@@ -44,6 +44,19 @@ then
     exit 0
 fi
 
+if [[ ! -d "${CODEX_DIR}" ]]; then
+    log "ERROR: codex2605 directory not found: ${CODEX_DIR}" >&2
+    exit 1
+fi
+if [[ ! -f "${CODEX_DIR}/.env.weather_email" ]]; then
+    log "ERROR: .env.weather_email not found in ${CODEX_DIR}" >&2
+    exit 1
+fi
+if [[ ! -f "${CODEX_DIR}/scripts/us_stock_intraday_monitor.py" ]]; then
+    log "ERROR: us_stock_intraday_monitor.py not found in ${CODEX_DIR}/scripts/" >&2
+    exit 1
+fi
+
 set -a
 source "${CODEX_DIR}/.env.weather_email"
 set +a
