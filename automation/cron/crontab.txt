@@ -33,12 +33,34 @@ CRON_TZ=America/New_York
 45 20 * * 1-5 cd /home/yc5/workspace/filefold/claude2605 && bash scripts/cc_run_nvda_options_4expiry.sh >> log/cc_run_nvda_options_4expiry.log 2>&1
 
 # ==========================================
+# [claude2605] MU 4-expiry 選擇權鏈 (美東 21:00，工作日)
+# Layer3 事件日 = MU FQ3 財報週（預估 2026-06-27）
+# ==========================================
+CRON_TZ=America/New_York
+0 21 * * 1-5 cd /home/yc5/workspace/filefold/claude2605 && bash scripts/cc_run_mu_options_4expiry.sh >> log/cc_run_mu_options_4expiry.log 2>&1
+
+# ==========================================
+# [claude2605] AMD 4-expiry 選擇權鏈 (美東 21:15，工作日)
+# Layer3 事件日 = AMD Q2 2026 財報週（預估 2026-08-01）
+# ==========================================
+CRON_TZ=America/New_York
+15 21 * * 1-5 cd /home/yc5/workspace/filefold/claude2605 && bash scripts/cc_run_amd_options_4expiry.sh >> log/cc_run_amd_options_4expiry.log 2>&1
+
+# ==========================================
+# [claude2605] MSFT 4-expiry 選擇權鏈 (美東 21:30，工作日)
+# Layer3 事件日 = MSFT Q4 FY2026 財報週（預估 2026-07-29）
+# ==========================================
+CRON_TZ=America/New_York
+30 21 * * 1-5 cd /home/yc5/workspace/filefold/claude2605 && bash scripts/cc_run_msft_options_4expiry.sh >> log/cc_run_msft_options_4expiry.log 2>&1
+
+# ==========================================
 # [codex2605] NVDA 4-expiry 選擇權鏈 (美東 21:00，工作日)
 # 輸出：codex2605/reports/us_stock_options_realtime/x_nvda_options_realtime_*（x_ 前綴）
 # x_ 前綴代表 codex2605 工作流，與 claude2605 無前綴版本區分
+# [PAUSED] 手動暫停，恢復前取消下方注解並重新 crontab < automation/cron/crontab.txt
 # ==========================================
 CRON_TZ=America/New_York
-0 21 * * 1-5 cd /home/yc5/workspace/filefold/codex2605 && bash scripts/x_run_nvda_options_4expiry.sh >> log/x_run_nvda_options_4expiry.log 2>&1
+#0 21 * * 1-5 cd /home/yc5/workspace/filefold/codex2605 && bash scripts/x_run_nvda_options_4expiry.sh >> log/x_run_nvda_options_4expiry.log 2>&1
 
 # 美股半導體週報 + 寄信 (台北時間 週六 08:10)
 CRON_TZ=Asia/Taipei
@@ -58,6 +80,12 @@ CRON_TZ=Asia/Taipei
 # ==========================================
 0 9 * * 1-5 cd /home/yc5/workspace/filefold/claude2605 && bash -c 'set -a && source .env.fubon && set +a && .venv-fubon/bin/python3 scripts/cc_run_tw_bigorder_monitor.py >> log/bigorder_monitor.log 2>&1' &
 35 13 * * 1-5 kill $(cat /home/yc5/workspace/filefold/claude2605/log/bigorder_monitor.pid 2>/dev/null) 2>/dev/null || true
+
+# ==========================================
+# gdrive 01_inbox 文書檔自動轉 .md (每 5 分鐘，全天)
+# 支援：.docx .odt .pptx .rtf → .md（pandoc）
+# ==========================================
+*/5 * * * * cd /home/yc5/workspace/filefold/claude2605 && bash scripts/gdrive_inbox_convert.sh >> log/gdrive_inbox_convert.log 2>&1
 
 # ==========================================
 # 金融股週報 + 升息情境分析 (台北時間 週五 18:00)
