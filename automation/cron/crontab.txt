@@ -8,6 +8,14 @@
 10 17 * * 1-5 cd /home/yc5/workspace/filefold/claude2605 && bash scripts/cc_run_tw_market_fubon_email.sh >> log/cc_run_tw_market_fubon_email.log 2>&1
 
 # ==========================================
+# 台指期 ECT 日線信號（台北時間 17:30，工作日）
+# W180_C2：train=180天 / confirm=2 / entry±1.0σ / 月度熔斷 -4%
+# 寄送：[台指期信號] 日期 │ 動作 │ z │ 月損益
+# ==========================================
+CRON_TZ=Asia/Taipei
+30 17 * * 1-5 cd /home/yc5/workspace/filefold/claude2605 && /usr/bin/python3 scripts/cc_tw_futures_signal_daily.py >> log/cc_tw_futures_signal.log 2>&1
+
+# ==========================================
 # 美債追蹤 (美東 20:30，工作日)
 # = 台北時間隔天凌晨 05:30 (冬令時) / 04:30 (夏令時)
 # 設定 CRON_TZ 讓 Cron 自動處理時區
