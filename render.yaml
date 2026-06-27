@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: spot-monitor
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: WEATHER_SMTP_HOST
+        sync: false
+      - key: WEATHER_SMTP_PORT
+        sync: false
+      - key: WEATHER_SMTP_USER
+        sync: false
+      - key: WEATHER_SMTP_PASSWORD
+        sync: false
+      - key: WEATHER_MAIL_FROM
+        sync: false
+      - key: RECIPIENT
+        sync: false
