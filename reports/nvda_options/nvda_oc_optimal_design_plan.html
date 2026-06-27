@@ -1,0 +1,225 @@
+
+<style>
+*{box-sizing:border-box}
+.wrap{padding:1rem 0;font-family:var(--font-sans)}
+h3.sec{font-size:12px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.05em;margin:1.5rem 0 .5rem}
+.divider{border:none;border-top:.5px solid var(--color-border-tertiary);margin:1.4rem 0}
+
+/* Timeline bar */
+.tl{display:grid;grid-template-columns:80px 1fr;gap:0;margin-bottom:1.2rem}
+.tl-time{font-size:11px;font-weight:500;color:var(--color-text-secondary);padding:.55rem .75rem .55rem 0;text-align:right;border-right:.5px solid var(--color-border-secondary);white-space:nowrap}
+.tl-body{padding:.45rem 0 .45rem 1rem;border-bottom:.5px solid var(--color-border-tertiary)}
+.tl-body:last-child{border-bottom:none}
+.tl-head{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px}
+.tl-sub{font-size:11px;color:var(--color-text-secondary);line-height:1.5}
+.pill{display:inline-block;font-size:10px;font-weight:500;padding:1px 7px;border-radius:10px;margin-right:4px}
+.pg{background:#EAF3DE;color:#3B6D11}
+.pb{background:#FCEBEB;color:#A32D2D}
+.pa{background:#FAEEDA;color:#854F0B}
+.pn{background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.pp{background:#EEEDFE;color:#534AB7}
+
+/* Signal matrix */
+.matrix{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:1rem}
+.matrix th{padding:5px 7px;background:var(--color-background-secondary);color:var(--color-text-secondary);font-weight:500;border-bottom:.5px solid var(--color-border-tertiary);text-align:center;white-space:nowrap}
+.matrix th:first-child{text-align:left}
+.matrix td{padding:5px 7px;border-bottom:.5px solid var(--color-border-tertiary);text-align:center;vertical-align:middle}
+.matrix td:first-child{text-align:left;font-weight:500;color:var(--color-text-primary)}
+.matrix tr:last-child td{border-bottom:none}
+.dot-g{display:inline-block;width:8px;height:8px;border-radius:50%;background:#63992E}
+.dot-a{display:inline-block;width:8px;height:8px;border-radius:50%;background:#BA7517}
+.dot-r{display:inline-block;width:8px;height:8px;border-radius:50%;background:#E24B4A}
+.dot-n{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--color-border-secondary)}
+
+/* Report spec cards */
+.rg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem}
+.rc{background:var(--color-background-primary);border:.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:.9rem 1rem}
+.rc-head{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:.6rem;display:flex;align-items:center;gap:8px}
+.rc-badge{font-size:10px;font-weight:500;padding:2px 7px;border-radius:10px}
+.rc-item{font-size:11px;color:var(--color-text-secondary);padding:3px 0;border-top:.5px solid var(--color-border-tertiary);display:flex;gap:6px;align-items:baseline}
+.rc-item:first-of-type{border-top:none}
+.rc-tag{font-size:10px;font-weight:500;flex-shrink:0;color:var(--color-text-tertiary)}
+
+/* Finding */
+.fb{border-left:3px solid;padding:.6rem .9rem;margin-bottom:.65rem;border-radius:0 var(--border-radius-md) var(--border-radius-md) 0;background:var(--color-background-secondary)}
+.fb.g{border-color:#1D9E75}
+.fb.r{border-color:#E24B4A}
+.fb.a{border-color:#BA7517}
+.fb.p{border-color:#7F77DD}
+.fb-t{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:3px}
+.fb-b{font-size:12px;color:var(--color-text-secondary);line-height:1.55}
+</style>
+
+<div class="wrap">
+<h2 class="sr-only">NVDA OC 最優化報告設計方案</h2>
+
+<!-- Decision headline -->
+<div class="fb p" style="margin-bottom:1.2rem">
+  <div class="fb-t">結論先說：不需要兩次，但要換一次的時機</div>
+  <div class="fb-b">現有 08:45 開盤前的時機本身是對的——問題不在時間，在於報告裡混入了三個時間層的數據卻沒有區分用途。最有效的改法是：<strong>維持一次報告，但把 OC 資料時間移到 T-1 16:15（收盤後）</strong>，同時移除 QQQ、QYLD、以及「現貨方向預測」的文字結論。</div>
+</div>
+
+<!-- Timeline: current vs proposed -->
+<h3 class="sec">現有 vs 建議時間軸</h3>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.2rem">
+
+<div>
+<div style="font-size:12px;font-weight:500;color:var(--color-text-secondary);margin-bottom:.5rem">現有做法（問題所在）</div>
+<div class="tl">
+  <div class="tl-time">T-1 16:00</div><div class="tl-body"><div class="tl-head">美股收盤</div><div class="tl-sub">NVDA 當日收盤價確定</div></div>
+  <div class="tl-time">T 00:44</div><div class="tl-body"><div class="tl-head"><span class="pill pb">問題</span>部分日OC抓取</div><div class="tl-sub">6/3: 深夜 00:44 UTC 抓取，OI 未完全結算</div></div>
+  <div class="tl-time">T 08:45</div><div class="tl-body"><div class="tl-head">OC 抓取 + 報告生成</div><div class="tl-sub">Cboe delayed data，含 T-1 EOD OI<br><span class="pill pb">問題</span>快照現貨 ≠ 今日預測基準</div></div>
+  <div class="tl-time">T 09:30</div><div class="tl-body"><div class="tl-head">美股開盤</div><div class="tl-sub"><span class="pill pb">問題</span>開盤後 G1 可能立刻漂移</div></div>
+</div>
+</div>
+
+<div>
+<div style="font-size:12px;font-weight:500;color:var(--color-text-secondary);margin-bottom:.5rem">建議做法（一次，移至收盤後）</div>
+<div class="tl">
+  <div class="tl-time">T-1 16:00</div><div class="tl-body"><div class="tl-head">美股收盤</div><div class="tl-sub">當日收盤價、成交量確定</div></div>
+  <div class="tl-time">T-1 16:15</div><div class="tl-body"><div class="tl-head"><span class="pill pg">新時機</span>OC 抓取</div><div class="tl-sub">Cboe 更新最快。當日完整 OI 已結算，Strike OI 日內變化可見，Skew 反映今日真實情緒</div></div>
+  <div class="tl-time">T-1 20:45</div><div class="tl-body"><div class="tl-head"><span class="pill pg">保留</span>報告生成（現有時間）</div><div class="tl-sub">台灣時間隔日 08:45 閱讀。OC 數據是 16:15 的，不是 08:45 的，時間標記要修正</div></div>
+  <div class="tl-time">T 09:30</div><div class="tl-body"><div class="tl-head">美股開盤（使用框架）</div><div class="tl-sub"><span class="pill pg">改善</span>T-1 收盤後 OI 比 T 08:45 pre-market 更乾淨</div></div>
+</div>
+</div>
+
+</div>
+
+<!-- Signal validity matrix -->
+<h3 class="sec">信號有效性矩陣（修正後）</h3>
+<table class="matrix">
+  <thead><tr>
+    <th style="width:16%;text-align:left">指標</th>
+    <th>T-1 16:15<br>收盤後OC</th>
+    <th>T 08:45<br>開盤前OC</th>
+    <th style="width:8%">半衰期</th>
+    <th style="width:10%">驗證準確率</th>
+    <th style="width:30%;text-align:left">關鍵結論</th>
+  </tr></thead>
+  <tbody>
+    <tr>
+      <td>Max Pain</td>
+      <td><span class="dot-g"></span> 最乾淨</td>
+      <td><span class="dot-a"></span> 可用</td>
+      <td>3–5天</td>
+      <td>磁吸有效</td>
+      <td style="text-align:left;color:var(--color-text-secondary)">收盤後 OI 完整，比開盤前更準確</td>
+    </tr>
+    <tr>
+      <td>ATM Skew</td>
+      <td><span class="dot-g"></span> 最有效</td>
+      <td><span class="dot-a"></span> 次優</td>
+      <td>1–2天</td>
+      <td style="color:#3B6D11">優於G1</td>
+      <td style="text-align:left;color:var(--color-text-secondary)">情緒前導指標，16:15 反映今日真實恐貪</td>
+    </tr>
+    <tr>
+      <td>G1 Gamma熱點</td>
+      <td><span class="dot-g"></span> 完整OI</td>
+      <td><span class="dot-a"></span> T-1 EOD</td>
+      <td>當日</td>
+      <td style="color:#A32D2D">33%（修正後）</td>
+      <td style="text-align:left;color:var(--color-text-secondary)">方向命中率低。Score>1000=波動警告，非方向</td>
+    </tr>
+    <tr>
+      <td>Key Strike OI<br>(C/P 特定履約)</td>
+      <td><span class="dot-g"></span> 含日內變化</td>
+      <td><span class="dot-r"></span> 靜態快照</td>
+      <td>當日</td>
+      <td>最重要</td>
+      <td style="text-align:left;color:var(--color-text-secondary)">16:15 才能看到「今天誰加倉/平倉」</td>
+    </tr>
+    <tr>
+      <td>Call Wall / Put Wall</td>
+      <td><span class="dot-g"></span> 完整</td>
+      <td><span class="dot-a"></span> 可用</td>
+      <td>3–7天</td>
+      <td>有效</td>
+      <td style="text-align:left;color:var(--color-text-secondary)">穿越後MM對沖機制需盤後確認是否觸發</td>
+    </tr>
+    <tr>
+      <td>PCR OI</td>
+      <td><span class="dot-g"></span> 完整</td>
+      <td><span class="dot-a"></span> 可用</td>
+      <td>2–3天</td>
+      <td>輔助</td>
+      <td style="text-align:left;color:var(--color-text-secondary)">絕對值意義有限，日內變化更重要</td>
+    </tr>
+    <tr>
+      <td>QQQ OC方向</td>
+      <td><span class="dot-r"></span> 移除</td>
+      <td><span class="dot-r"></span> 移除</td>
+      <td>—</td>
+      <td style="color:#A32D2D">62.5%（有偏誤）</td>
+      <td style="text-align:left;color:var(--color-text-secondary)">系統性BEAR偏誤。僅保留Beta係數一行</td>
+    </tr>
+    <tr>
+      <td>QYLD天花板</td>
+      <td><span class="dot-r"></span> 移除</td>
+      <td><span class="dot-r"></span> 移除</td>
+      <td>—</td>
+      <td style="color:#A32D2D">0/10 鑑別力</td>
+      <td style="text-align:left;color:var(--color-text-secondary)">全程超過，常數非訊號，完全移除</td>
+    </tr>
+    <tr>
+      <td>文字方向結論</td>
+      <td><span class="dot-r"></span> 移除</td>
+      <td><span class="dot-r"></span> 移除</td>
+      <td>—</td>
+      <td style="color:#A32D2D">G1邏輯33%</td>
+      <td style="text-align:left;color:var(--color-text-secondary)">數字自己說話，不要讓報告替你下結論</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr class="divider">
+
+<!-- Proposed report spec -->
+<h3 class="sec">建議報告規格（一份，T-1 16:15 OC）</h3>
+<div class="rg">
+  <div class="rc">
+    <div class="rc-head"><span class="rc-badge" style="background:#EAF3DE;color:#3B6D11">保留</span>必要區塊</div>
+    <div class="rc-item"><span class="rc-tag">01</span>OC 快照：現貨收盤價 + IV30 + HV30（一行）</div>
+    <div class="rc-item"><span class="rc-tag">02</span>6/12 expiry — Max Pain + Call Wall + Put Wall</div>
+    <div class="rc-item"><span class="rc-tag">03</span>ATM Skew + Near-ATM IV（情緒溫度計）</div>
+    <div class="rc-item"><span class="rc-tag">04</span>Gamma Hotspot Top-3（含分數，不附方向結論）</div>
+    <div class="rc-item"><span class="rc-tag">05</span>Key Strike OI 日內變化（△OI = 今日 − 昨日）</div>
+    <div class="rc-item"><span class="rc-tag">06</span>PCR OI（僅數值，不附文字解讀）</div>
+    <div class="rc-item"><span class="rc-tag">07</span>Beta 一行：QQQ ±1% → NVDA ±N%</div>
+  </div>
+  <div class="rc">
+    <div class="rc-head"><span class="rc-badge" style="background:#FCEBEB;color:#A32D2D">移除</span>建議刪除區塊</div>
+    <div class="rc-item"><span class="rc-tag">✕</span>QQQ OC 完整分析區塊（4個聯動訊號）</div>
+    <div class="rc-item"><span class="rc-tag">✕</span>QYLD 天花板距離</div>
+    <div class="rc-item"><span class="rc-tag">✕</span>QQQ→NVDA 綜合推估（文字方向結論）</div>
+    <div class="rc-item"><span class="rc-tag">✕</span>QQQ Max Pain 壓力 % 估算</div>
+    <div class="rc-item"><span class="rc-tag">✕</span>盤中快照（移至純參考附錄或刪除）</div>
+    <div class="rc-item"><span class="rc-tag">✕</span>每日文字解讀段落（讓數字自己說話）</div>
+  </div>
+</div>
+
+<!-- Key design principles -->
+<h3 class="sec">設計原則</h3>
+
+<div class="fb g">
+  <div class="fb-t">原則 1｜數字 > 文字結論</div>
+  <div class="fb-b">報告的角色是「提供數字框架」，不是「替你決策」。Skew=−0.97 比「市場偏多，建議做多」更有價值——前者是事實，後者是可能錯誤的詮釋。移除所有文字方向結論，只保留數字和衍生計算（△OI、Spot−G1 距離、G1 score）。</div>
+</div>
+
+<div class="fb g">
+  <div class="fb-t">原則 2｜△OI 比 OI 更重要</div>
+  <div class="fb-b">絕對 OI 數值只能看存量。每日的 Key Strike △OI（今日 OI − 昨日 OI）才能看出「今天誰在加倉、誰在平倉」。這是目前報告最缺少的維度，也是 16:15 才能取得的最高價值數據。建議對 C$215、C$220、C$225、P$200、P$210 的 △OI 建立縱向追蹤欄位。</div>
+</div>
+
+<div class="fb a">
+  <div class="fb-t">原則 3｜G1 score 作為波動警報，不作為方向</div>
+  <div class="fb-b">修正後驗證：G1 方向命中率 33%。但 G1 score > 1000 確實預示大波動（6/5 次日 −6.2%，6/8 預示後續劇烈移動）。建議保留 score 數字，加上「score > 1000 = ⚠ 波動放大警示」的標記，移除「BULL/BEAR 方向推估」欄位。</div>
+</div>
+
+<div class="fb p">
+  <div class="fb-t">原則 4｜Skew 是最可信的前導指標</div>
+  <div class="fb-b">在 9 天樣本中，Skew 的方向判斷多次優於 G1 邏輯。特別是 Skew 由負轉正（Put 溢價上升）往往領先下跌 1–2 日。建議在報告中加入「Skew 連續變化方向」欄位（今日 vs 前一日），讓趨勢比單日數值更可見。</div>
+</div>
+
+</div>

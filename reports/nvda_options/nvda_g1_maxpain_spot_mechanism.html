@@ -1,0 +1,299 @@
+
+<style>
+*{box-sizing:border-box}
+.wrap{padding:1rem 0;font-family:var(--font-sans)}
+h3.sec{font-size:12px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.05em;margin:1.5rem 0 .5rem}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11px;color:var(--color-text-secondary);margin-bottom:6px}
+.legend span{display:flex;align-items:center;gap:4px}
+.lbox{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.chart-wrap{position:relative;width:100%;margin-bottom:.5rem}
+.divider{border:none;border-top:.5px solid var(--color-border-tertiary);margin:1.5rem 0}
+
+/* Mechanism diagram */
+.mech-outer{background:var(--color-background-secondary);border-radius:var(--border-radius-lg);padding:1.1rem 1.2rem;margin-bottom:1rem}
+.mech-title{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:.8rem}
+.flow-row{display:flex;align-items:center;gap:6px;margin-bottom:.5rem;flex-wrap:wrap}
+.node{font-size:11px;font-weight:500;padding:4px 10px;border-radius:var(--border-radius-md);white-space:nowrap}
+.node-r{background:#FCEBEB;color:#A32D2D}
+.node-g{background:#EAF3DE;color:#3B6D11}
+.node-b{background:#E6F1FB;color:#185FA5}
+.node-a{background:#FAEEDA;color:#854F0B}
+.node-p{background:#EEEDFE;color:#534AB7}
+.node-gray{background:var(--color-background-primary);color:var(--color-text-secondary);border:.5px solid var(--color-border-tertiary)}
+.arrow{font-size:14px;color:var(--color-text-tertiary)}
+.mech-note{font-size:11px;color:var(--color-text-secondary);margin-top:.5rem;line-height:1.5}
+
+/* Regime timeline */
+.timeline{display:grid;grid-template-columns:repeat(9,1fr);gap:4px;margin-bottom:.8rem}
+.tday{border-radius:6px;padding:4px 2px;text-align:center;font-size:10px}
+.tday .dl{color:var(--color-text-tertiary);font-size:9px;margin-bottom:1px}
+.tday .dr{font-weight:500;font-size:11px}
+.tday .ds{font-size:9px;margin-top:1px}
+.regime-call{background:#EAF3DE}
+.regime-put{background:#FCEBEB}
+
+/* Application table */
+.app-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:.6rem}
+.app-table th{text-align:left;padding:6px 8px;background:var(--color-background-secondary);color:var(--color-text-secondary);font-weight:500;border-bottom:.5px solid var(--color-border-tertiary)}
+.app-table td{padding:6px 8px;border-bottom:.5px solid var(--color-border-tertiary);color:var(--color-text-primary);vertical-align:top}
+.app-table tr:last-child td{border-bottom:none}
+.pill{display:inline-block;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:500}
+.pill-r{background:#FCEBEB;color:#A32D2D}
+.pill-g{background:#EAF3DE;color:#3B6D11}
+.pill-a{background:#FAEEDA;color:#854F0B}
+.pill-b{background:#E6F1FB;color:#185FA5}
+
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:1rem}
+.mc{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:.7rem 1rem}
+.mc-l{font-size:11px;color:var(--color-text-secondary);margin-bottom:2px}
+.mc-v{font-size:16px;font-weight:500;color:var(--color-text-primary)}
+.mc-s{font-size:11px;color:var(--color-text-tertiary);margin-top:1px}
+</style>
+
+<div class="wrap">
+<h2 class="sr-only">Gamma#1 vs Max Pain vs 現貨 — 機制詳解與應用框架</h2>
+
+<!-- ① 三者定義 -->
+<h3 class="sec">① 三個指標各自代表什麼</h3>
+<div class="grid2">
+  <div class="mc">
+    <div class="mc-l">Gamma 第一熱點（G1）</div>
+    <div class="mc-v" style="font-size:13px;margin-top:4px">MM 對沖行為最密集的履約價</div>
+    <div class="mc-s">= abs(Gamma) × OI 最高的 Strike。現貨每移動 $1，MM 在這個價位的 delta 對沖量最大。G1 是「力場中心」——現貨靠近時被加速推走，遠離時被拉回。</div>
+  </div>
+  <div class="mc">
+    <div class="mc-l">Max Pain（MP）</div>
+    <div class="mc-v" style="font-size:13px;margin-top:4px">所有未平倉合約損失最小的到期價</div>
+    <div class="mc-s">= 讓全體 OI 買方損失最大（賣方收益最大）的現貨到期點。MM 和大型賣方有動機讓現貨在到期時收斂於此。MP 是「終點引力」，越接近到期日越強。</div>
+  </div>
+  <div class="mc">
+    <div class="mc-l">現貨位置（Spot）</div>
+    <div class="mc-v" style="font-size:13px;margin-top:4px">G1 與 MP 共同作用的結果</div>
+    <div class="mc-s">現貨不是自由漂浮的。它在 G1 的即時 delta-hedge 流量和 MP 的慢速引力之間找平衡。三者的相對位置決定了 MM 當下是「買股支撐」還是「賣股壓制」。</div>
+  </div>
+  <div class="mc">
+    <div class="mc-l">G1 的兩種型態（本案例）</div>
+    <div class="mc-v" style="font-size:13px;margin-top:4px">PUT_ANCHOR vs CALL_TARGET</div>
+    <div class="mc-s">G1=$200 → Put OI 主導，$200 是防禦地板，現貨浮在 G1 上方 $14–16；G1=$220+ → Call OI 主導，$220 是攻擊目標，現貨在 G1 下方，MM long-gamma 買股。</div>
+  </div>
+</div>
+
+<!-- ② G1 交替翻轉 Regime Timeline -->
+<h3 class="sec">② G1 交替翻轉 — 9天場景分類</h3>
+<div class="timeline">
+  <div class="tday regime-call"><div class="dl">5/26</div><div class="dr">$220</div><div class="ds">Call目標</div></div>
+  <div class="tday regime-put"><div class="dl">5/27</div><div class="dr">$200</div><div class="ds">Put錨點</div></div>
+  <div class="tday regime-call"><div class="dl">5/29</div><div class="dr">$220</div><div class="ds">Call目標</div></div>
+  <div class="tday regime-put"><div class="dl">6/1</div><div class="dr">$200</div><div class="ds">Put錨點</div></div>
+  <div class="tday regime-call"><div class="dl">6/2</div><div class="dr">$220</div><div class="ds">Call目標</div></div>
+  <div class="tday regime-put"><div class="dl">6/3</div><div class="dr">$200</div><div class="ds">Put錨點</div></div>
+  <div class="tday regime-call"><div class="dl">6/4</div><div class="dr">$220</div><div class="ds">Call目標</div></div>
+  <div class="tday regime-call" style="background:#FAEEDA"><div class="dl">6/5</div><div class="dr">$225</div><div class="ds">⚠升級</div></div>
+  <div class="tday regime-call" style="background:#E6F1FB"><div class="dl">6/8</div><div class="dr">$215</div><div class="ds">壓縮</div></div>
+</div>
+<div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:.5rem">
+  <span style="display:inline-block;width:10px;height:10px;background:#EAF3DE;border-radius:2px;margin-right:4px"></span>Call目標型（現貨在G1下，MM買撐）
+  <span style="display:inline-block;width:10px;height:10px;background:#FCEBEB;border-radius:2px;margin:0 4px 0 12px"></span>Put錨點型（現貨在G1上，MM空轉）
+  <span style="display:inline-block;width:10px;height:10px;background:#FAEEDA;border-radius:2px;margin:0 4px 0 12px"></span>升級/位移
+</div>
+
+<!-- ③ Main chart: spot + G1 + MP + G1 score bubble -->
+<h3 class="sec">③ 三者位置關係 + G1 強度（氣泡大小 = Gamma分數）</h3>
+<div class="legend">
+  <span><span class="lbox" style="background:#378ADD"></span>現貨</span>
+  <span><span class="lbox" style="background:#7F77DD"></span>G1 位置</span>
+  <span><span class="lbox" style="background:#BA7517"></span>Max Pain</span>
+  <span><span class="lbox" style="background:#1D9E75"></span>G1–MP 展距（右軸）</span>
+</div>
+<div class="chart-wrap" style="height:250px">
+  <canvas id="c1" role="img" aria-label="現貨在210-227間波動，G1在200-225交替，MaxPain從215下移至210，G1-MP展距在6/5達+15最高">三者位置關係折線圖</canvas>
+</div>
+
+<!-- ④ G1 score vs next-day return scatter -->
+<h3 class="sec">④ G1 強度爆升 → 次日反向反轉（關鍵規律）</h3>
+<div class="legend">
+  <span><span class="lbox" style="background:#E24B4A"></span>次日現貨漲跌%</span>
+  <span><span class="lbox" style="background:#7F77DD"></span>G1 score（右軸）</span>
+</div>
+<div class="chart-wrap" style="height:200px">
+  <canvas id="c2" role="img" aria-label="G1 score在6/5爆升至1360後次日暴跌-6.2%；6/8 score達1513預示反彈">G1強度與次日報酬</canvas>
+</div>
+
+<!-- ⑤ Spot position relative to G1 and MP -->
+<h3 class="sec">⑤ 現貨偏離 G1 與 Max Pain 的距離</h3>
+<div class="legend">
+  <span><span class="lbox" style="background:#7F77DD"></span>Spot − G1（正=在G1上方）</span>
+  <span><span class="lbox" style="background:#BA7517"></span>Spot − Max Pain（正=高於MP）</span>
+</div>
+<div class="chart-wrap" style="height:190px">
+  <canvas id="c3" role="img" aria-label="Spot-G1在±16間波動，Spot-MP持續正值但在6/8收斂至接近0">現貨vs G1 vs MP偏離圖</canvas>
+</div>
+
+<hr class="divider">
+
+<!-- ⑥ Mechanism flowcharts -->
+<h3 class="sec">⑥ 機制流程圖</h3>
+
+<div class="mech-outer">
+  <div class="mech-title">場景 A — G1 = CALL_TARGET，現貨在 G1 下方（本案例 7/9 天）</div>
+  <div class="flow-row">
+    <span class="node node-b">大量 Call OI 堆積在 $220+</span>
+    <span class="arrow">→</span>
+    <span class="node node-b">MM 賣出這些 Call</span>
+    <span class="arrow">→</span>
+    <span class="node node-a">MM Short Gamma at $220</span>
+    <span class="arrow">→</span>
+    <span class="node node-g">現貨靠近 $220：MM 買股 hedge</span>
+  </div>
+  <div class="flow-row">
+    <span class="node node-g">MM 買股 → 現貨被推向 G1</span>
+    <span class="arrow">→</span>
+    <span class="node node-g">G1 對現貨有「上拉」效應</span>
+    <span class="arrow">→</span>
+    <span class="node node-a">G1 扮演「天花板磁鐵」</span>
+  </div>
+  <div class="mech-note">⚠ 注意：若現貨突破 G1，MM delta 超額 → 開始賣股平倉 → 形成回壓（6/2 案例）</div>
+</div>
+
+<div class="mech-outer">
+  <div class="mech-title">場景 B — G1 = PUT_ANCHOR，現貨在 G1 上方（本案例 3/9 天，5/27、6/1、6/3）</div>
+  <div class="flow-row">
+    <span class="node node-r">大量 Put OI 堆積在 $200</span>
+    <span class="arrow">→</span>
+    <span class="node node-r">MM 賣出這些 Put</span>
+    <span class="arrow">→</span>
+    <span class="node node-a">MM Short Gamma at $200</span>
+    <span class="arrow">→</span>
+    <span class="node node-g">現貨靠近 $200：MM 買股 hedge</span>
+  </div>
+  <div class="flow-row">
+    <span class="node node-g">$200 提供強支撐</span>
+    <span class="arrow">→</span>
+    <span class="node node-r">但現貨浮在 $214–216（G1 上方 +$14）</span>
+    <span class="arrow">→</span>
+    <span class="node node-a">G1 不是引力，是「地板參考」</span>
+  </div>
+  <div class="mech-note">⚠ G1=PUT_ANCHOR 的當天，真正的磁吸引力來自 Max Pain 而非 G1。這兩天（5/27、6/1）的 Max Pain 都在 $200–205，與 G1 合體，引力翻倍。</div>
+</div>
+
+<div class="mech-outer">
+  <div class="mech-title">場景 C — G1 大幅位移（6/5: $225 → 6/8: $215）＝ 結構壓縮警報</div>
+  <div class="flow-row">
+    <span class="node node-a">6/5: C$225 OI 爆增 +19K</span>
+    <span class="arrow">→</span>
+    <span class="node node-a">G1 升至 $225，分數 1360</span>
+    <span class="arrow">→</span>
+    <span class="node node-r">現貨 $215，距 G1 $10</span>
+  </div>
+  <div class="flow-row">
+    <span class="node node-r">6/8 開盤：現貨跌至 $205</span>
+    <span class="arrow">→</span>
+    <span class="node node-r">C$225 全數 OTM，G1 被迫下移至 $215</span>
+    <span class="arrow">→</span>
+    <span class="node node-r">OTM Call 持有人恐慌平倉 441K vol</span>
+  </div>
+  <div class="flow-row">
+    <span class="node node-r">MM delta unwind（反向賣股）</span>
+    <span class="arrow">→</span>
+    <span class="node node-r">加速下跌 −6.2%</span>
+    <span class="arrow">→</span>
+    <span class="node node-g">最終現貨 $210.19 ≈ MP $210 收斂</span>
+  </div>
+  <div class="mech-note">核心規律：G1 score 單日超過 1000 且 G1 距現貨超過 $8 → 這批 Gamma 部位多半在到期前無法兌現 → 逆向平倉風險極高。</div>
+</div>
+
+<hr class="divider">
+
+<!-- ⑦ Application table -->
+<h3 class="sec">⑦ 實戰應用框架</h3>
+<table class="app-table">
+  <thead><tr>
+    <th style="width:22%">觀察條件</th>
+    <th style="width:28%">機制解讀</th>
+    <th style="width:25%">操作含義</th>
+    <th style="width:25%">本案例對應</th>
+  </tr></thead>
+  <tbody>
+    <tr>
+      <td><span class="pill pill-g">G1 = Call Target</span><br>現貨 &lt; G1，距離 &lt; $5</td>
+      <td>MM 買股對沖正在進行，G1 有吸引力</td>
+      <td>偏多，靠近 G1 是阻力非支撐，考慮 Call Spread 上行</td>
+      <td>6/8: G1=$215，現貨$210，距$4.8 → 反彈設定</td>
+    </tr>
+    <tr>
+      <td><span class="pill pill-r">G1 = Call Target</span><br>現貨 &gt; G1（突破）</td>
+      <td>MM delta 超額，開始賣股平倉，形成回壓</td>
+      <td>偏空，突破無量視為假突破，考慮 Bear Spread</td>
+      <td>6/2: 現貨$227 &gt; G1=$220 → 6/3 反轉 −3.6%</td>
+    </tr>
+    <tr>
+      <td><span class="pill pill-a">G1 = Put Anchor</span><br>現貨 &gt; G1 + $10 以上</td>
+      <td>G1 不是當日磁吸，Max Pain 才是引力核心</td>
+      <td>看 MP 位置決定方向，G1 僅當地板參考</td>
+      <td>5/27、6/1、6/3：現貨浮在 G1 上 $14–16</td>
+    </tr>
+    <tr>
+      <td><span class="pill pill-r">G1 score 單日 &gt;1000</span><br>且 G1 距現貨 &gt; $8</td>
+      <td>大量 OTM Gamma 部位累積，到期前平倉風險高</td>
+      <td>警戒模式：若現貨無法觸及 G1，持倉者被迫平倉，反向壓力大</td>
+      <td>6/5: G1=225 score=1360，現貨$215.3 → 6/8 暴跌</td>
+    </tr>
+    <tr>
+      <td><span class="pill pill-b">G1 下壓 + MP 收斂</span><br>G1 − MP &lt; $5</td>
+      <td>即時力場（G1）與終點引力（MP）合體，磁吸最強</td>
+      <td>到期前 2–3 日：現貨大概率被「釘住」在此區間</td>
+      <td>6/8: G1=$215, MP=$210, 現貨=$210.2 → 完全釘住</td>
+    </tr>
+  </tbody>
+</table>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const labels = ['5/26','5/27','5/29','6/1','6/2','6/3','6/4','6/5','6/8'];
+const spot =   [213.91, 215.57, 215.09, 215.90, 227.24, 214.25, 212.00, 215.28, 210.19];
+const g1pos =  [220, 200, 220, 200, 220, 200, 220, 225, 215];
+const mp =     [215, 200, 205, 205, 207.5, 210, 210, 210, 210];
+const g1score= [281, 514, 656, 650, 572, 599, 636, 1360, 1513];
+const g1mp =   g1pos.map((g,i) => g - mp[i]);
+const spotG1 = spot.map((s,i) => +(s - g1pos[i]).toFixed(2));
+const spotMP = spot.map((s,i) => +(s - mp[i]).toFixed(2));
+const nextRet = [-0.22, 0.78, -1.45, 6.26, -3.62, -3.62, 1.82, -6.20, null];
+
+const dark = window.matchMedia('(prefers-color-scheme:dark)').matches;
+const tc = dark?'rgba(255,255,255,.65)':'rgba(0,0,0,.55)';
+const gc = dark?'rgba(255,255,255,.07)':'rgba(0,0,0,.07)';
+const base = {responsive:true,maintainAspectRatio:false,
+  plugins:{legend:{display:false}},
+  scales:{x:{ticks:{color:tc,font:{size:10}},grid:{color:gc}},y:{ticks:{color:tc,font:{size:10}},grid:{color:gc}}}};
+
+// C1: spot + G1 + MP + G1-MP spread
+new Chart(document.getElementById('c1'),{type:'line',data:{labels,datasets:[
+  {label:'現貨',data:spot,borderColor:'#378ADD',borderWidth:2.5,pointRadius:5,pointBackgroundColor:spot.map((s,i)=>s>g1pos[i]?'#E24B4A':'#378ADD'),tension:.3,fill:false,yAxisID:'y'},
+  {label:'G1',data:g1pos,borderColor:'#7F77DD',borderWidth:2,pointRadius:5,pointBackgroundColor:'#7F77DD',tension:.1,fill:false,borderDash:[5,2],yAxisID:'y'},
+  {label:'MP',data:mp,borderColor:'#BA7517',borderWidth:1.5,pointRadius:3,tension:.2,fill:false,borderDash:[3,3],yAxisID:'y'},
+  {label:'G1-MP展距',data:g1mp,type:'bar',backgroundColor:g1mp.map(v=>v>=0?'rgba(29,158,117,.3)':'rgba(226,75,74,.3)'),borderColor:g1mp.map(v=>v>=0?'#1D9E75':'#E24B4A'),borderWidth:1,yAxisID:'y2'},
+]},options:{...base,scales:{x:base.scales.x,
+  y:{...base.scales.y,min:190,max:235,title:{display:true,text:'價格 ($)',color:tc,font:{size:10}}},
+  y2:{position:'right',ticks:{color:tc,font:{size:10}},grid:{display:false},min:-20,max:25,title:{display:true,text:'G1-MP ($)',color:tc,font:{size:10}}}
+}}});
+
+// C2: G1 score + next day return
+new Chart(document.getElementById('c2'),{type:'bar',data:{labels,datasets:[
+  {label:'次日漲跌%',data:nextRet,backgroundColor:nextRet.map(v=>v===null?'transparent':v>=0?'rgba(55,138,221,.5)':'rgba(226,75,74,.5)'),borderColor:nextRet.map(v=>v===null?'transparent':v>=0?'#378ADD':'#E24B4A'),borderWidth:1,yAxisID:'y2'},
+  {label:'G1 score',data:g1score,type:'line',borderColor:'#7F77DD',borderWidth:2.5,pointRadius:5,pointBackgroundColor:g1score.map(s=>s>1000?'#E24B4A':'#7F77DD'),tension:.3,fill:false,yAxisID:'y'},
+]},options:{...base,scales:{x:base.scales.x,
+  y:{...base.scales.y,min:0,max:1800,title:{display:true,text:'G1 score',color:'#7F77DD',font:{size:10}}},
+  y2:{position:'right',ticks:{color:tc,font:{size:10}},grid:{display:false},title:{display:true,text:'次日%',color:tc,font:{size:10}}}
+}}});
+
+// C3: spot-G1 and spot-MP
+new Chart(document.getElementById('c3'),{type:'bar',data:{labels,datasets:[
+  {label:'Spot−G1',data:spotG1,backgroundColor:spotG1.map(v=>v>=0?'rgba(127,119,221,.5)':'rgba(127,119,221,.25)'),borderColor:'#7F77DD',borderWidth:1,yAxisID:'y'},
+  {label:'Spot−MP',data:spotMP,type:'line',borderColor:'#BA7517',borderWidth:2,pointRadius:4,pointBackgroundColor:'#BA7517',tension:.3,fill:false,yAxisID:'y'},
+]},options:{...base,scales:{x:base.scales.x,
+  y:{...base.scales.y,title:{display:true,text:'偏離量 ($)',color:tc,font:{size:10}}},
+  y2:{position:'right',ticks:{color:tc,font:{size:10}},grid:{display:false}}
+}}});
+</script>
