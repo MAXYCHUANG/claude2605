@@ -44,3 +44,8 @@ python3 "${CC_PROJECT_DIR}/scripts/cc_send_report_email.py" \
   --subject "cc_ TW Market Daily Report" \
   --body "老闆您好，本日台股日終量價與法人追蹤報告（TWII / 0050 / 2330 / 00830 / 00891 / 2881 / 2891）。" \
   --html-body "${HTML_PATH}"
+
+if [[ -n "${REPORT_PATH}" ]]; then
+  bash "${CC_PROJECT_DIR}/scripts/gdrive_push.sh" "${REPORT_PATH}" 06_exports || \
+    echo "WARNING: gdrive_push 略過（掛載不可用或失敗）" >&2
+fi

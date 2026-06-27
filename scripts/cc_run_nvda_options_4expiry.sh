@@ -86,9 +86,19 @@ REPORT_PATHS=()
 SPOT_PRICE=""
 SNAPSHOT_MD=""
 STAMP=$(TZ=America/New_York date '+%Y%m%d_%H%M%S')
+SNAPSHOT_OUT="/tmp/${SYMBOL,,}_intraday_snapshot_${STAMP}.md"
+TEMP_OC_MD="/tmp/${SYMBOL,,}_oc_full_${STAMP}.md"
+CARD_MD="/tmp/${SYMBOL,,}_card_${STAMP}.md"
+RUN_DATE="$(TZ=America/New_York date '+%Y-%m-%d')"
+COMBINED_MD="${CC_PROJECT_DIR}/reports/nvda_options/nvda_options_4expiry_${RUN_DATE}.md"
+OI_CACHE_DIR="${CC_PROJECT_DIR}/data/oi_cache"
+mkdir -p "$(dirname "${COMBINED_MD}")"
+HTML_PATH=""
+
+_cleanup() { rm -f "${SNAPSHOT_OUT}" "${TEMP_OC_MD}" "${CARD_MD}" ${HTML_PATH:+"${HTML_PATH}"}; }
+trap _cleanup EXIT
 
 # ── Intraday snapshot ──────────────────────────────────────────────────────
-SNAPSHOT_OUT="/tmp/${SYMBOL,,}_intraday_snapshot_${STAMP}.md"
 SNAP_OUT=""
 if SNAP_OUT=$(python3 "${CODEX_DIR}/scripts/us_stock_intraday_snapshot.py" "${SYMBOL}" \
     --output "${SNAPSHOT_OUT}" 2>&1); then
@@ -130,25 +140,66 @@ if [[ "${SUCCESS}" -eq 0 ]]; then
     exit 1
 fi
 
-RUN_DATE="$(TZ=America/New_York date '+%Y-%m-%d')"
-COMBINED_MD="/tmp/nvda_options_4expiry_${RUN_DATE}.md"
+# ── QQQ L1 fetch（大盤燈號，不產生獨立報告）───────────────────────────────────
+QQQ_RPATH=""
+QQQ_EXPIRY="$(echo "${EXPIRIES}" | awk '{print $1}')"
+log "Fetching QQQ L1 (expiry=${QQQ_EXPIRY}) for 大盤燈號..."
+QQQ_FETCH_OUT=""
+if QQQ_FETCH_OUT=$(python3 "${OPTIONS_SCRIPT}" "QQQ" --expiry "${QQQ_EXPIRY}" \
+        --max-rows "${MAX_ROWS}" 2>&1); then
+    echo "${QQQ_FETCH_OUT}"
+    QQQ_RPATH=$(echo "${QQQ_FETCH_OUT}" | grep "^REPORT_PATH=" | cut -d= -f2-)
+    log "QQQ L1 fetch OK"
+else
+    echo "${QQQ_FETCH_OUT}"
+    log "WARN: QQQ L1 fetch failed — 大盤燈號 will show N/A"
+fi
 
-# 合併盤中快照 + 所有到期層報告為一份 .md
+# ── Step 1：全 expiry OC 暫存（用於錨點卡計算）─────────────────────────────
 {
-    echo "# NVDA Options Chain — 4-Expiry Report ${RUN_DATE}"
+    echo "# NVDA Options Chain — ${RUN_DATE}"
     echo ""
-    if [[ -n "${SNAPSHOT_MD}" && -f "${SNAPSHOT_MD}" ]]; then
-        cat "${SNAPSHOT_MD}"
-        echo ""
-        echo "---"
-        echo ""
-    fi
     for RPATH in "${REPORT_PATHS[@]}"; do
         cat "${RPATH}"
         echo ""
         echo "---"
         echo ""
     done
+} > "${TEMP_OC_MD}"
+
+# ── Step 2：OI 快取（△OI + Beta + HV30）──────────────────────────────────────
+python3 "${CC_PROJECT_DIR}/scripts/cc_oc_cache_writer.py" \
+    --symbol "${SYMBOL}" \
+    --date "${RUN_DATE}" \
+    --combined-md "${TEMP_OC_MD}" \
+    --cache-dir "${OI_CACHE_DIR}" || log "WARN: OI cache write failed (continuing)"
+
+# ── Step 3：生成錨點卡（讀全 expiry 計算 term structure）────────────────────
+CARD_ARGS=(--cache-dir "${OI_CACHE_DIR}" --output "${CARD_MD}")
+[[ -n "${QQQ_RPATH}" ]] && CARD_ARGS+=(--qqq-oc "${QQQ_RPATH}")
+python3 "${CC_PROJECT_DIR}/scripts/cc_oc_daily_summary.py" "${TEMP_OC_MD}" \
+    "${CARD_ARGS[@]}" || log "WARN: anchor card generate failed (continuing)"
+
+# ── Step 4：組合最終報告（錨點卡 → 盤中快照 → L1 OC 原始數據）──────────────
+{
+    echo "# NVDA Options Chain — ${RUN_DATE}"
+    echo ""
+    [[ -f "${CARD_MD}" ]] && cat "${CARD_MD}"
+    if [[ -n "${SNAPSHOT_MD}" && -f "${SNAPSHOT_MD}" ]]; then
+        echo ""
+        echo "---"
+        echo ""
+        cat "${SNAPSHOT_MD}"
+    fi
+    if [[ ${#REPORT_PATHS[@]} -gt 0 && -f "${REPORT_PATHS[0]}" ]]; then
+        echo ""
+        echo "---"
+        echo ""
+        cat "${REPORT_PATHS[0]}"
+    fi
+    echo ""
+    echo "---"
+    echo ""
 } > "${COMBINED_MD}"
 
 HTML_PATH="$(python3 "${CC_PROJECT_DIR}/scripts/cc_md_to_html.py" "${COMBINED_MD}" --print)"

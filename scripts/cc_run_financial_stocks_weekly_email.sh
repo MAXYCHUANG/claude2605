@@ -39,11 +39,11 @@ fi
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] 寄信給 yc5780" >> "$LOG"
 
 if [[ ! -d "${CODEX}" ]]; then
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: codex2605 directory not found: ${CODEX}" >> "$LOG"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: codex2605 directory not found: ${CODEX}" | tee -a "$LOG" >&2
     exit 1
 fi
 if [[ ! -f "${CODEX}/.env.weather_email" ]]; then
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: .env.weather_email not found in ${CODEX}" >> "$LOG"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: .env.weather_email not found in ${CODEX}" | tee -a "$LOG" >&2
     exit 1
 fi
 cd "${CODEX}"

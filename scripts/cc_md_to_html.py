@@ -57,7 +57,7 @@ hr {{ border: none; border-top: 1px solid #e0e0e0; margin: 20px 0; }}
 <body>
 <div class="container">
 {body}
-<p class="footer">Claude2605 自動報告系統</p>
+<p class="footer">Claude2605 自動報告系統 ｜ 來源：<code>{source_path}</code></p>
 </div>
 </body>
 </html>
@@ -71,7 +71,7 @@ def convert(md_path: Path, out_path: Path) -> None:
         extensions=["tables", "fenced_code", "nl2br", "sane_lists"],
     )
     title = md_path.stem.replace("_", " ")
-    html = HTML_TEMPLATE.format(title=title, body=body)
+    html = HTML_TEMPLATE.format(title=title, body=body, source_path=md_path.resolve())
     out_path.write_text(html, encoding="utf-8")
 
 

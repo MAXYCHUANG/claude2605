@@ -26,6 +26,11 @@ import sys
 import warnings
 from pathlib import Path
 
+# cc_metrics：標準指標計算 + 自我驗證（2026-05-29 retrofit）
+# 取代原本 stats() 內的非標準 Sharpe 計算（active-only），避免歷史 bug 復發
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from cc_metrics import perf_summary, assert_sharpe_consistency
+
 warnings.filterwarnings("ignore")
 
 import matplotlib
@@ -337,29 +342,66 @@ def backtest(ds, z_arr, sig_dir_arr, oos_start,
 
 
 def stats(bt, oos_start):
-    pnl = bt["daily_pnl"][oos_start:]
-    tr  = bt["trades"]
-    cum = bt["cum_pnl"]
+    """
+    OOS 績效計算。
 
-    total = float(cum[-1])
+    2026-05-29 retrofit：以 cc_metrics 標準計算取代非標準 active-only Sharpe。
+
+    歷史 bug：原版 sharpe 用 pnl[pnl != 0] 計算（僅持倉日），導致 W180_C1 報告值
+    +3.51 虛高至實際 +1.944（1.81x）。本版改用 cc_metrics.perf_summary()，並保留
+    舊版指標於 *_active / *_arithmetic 欄位供對照。
+
+    返回欄位（向後相容；舊腳本仍可讀取 sharpe / total / mdd / calmar）：
+      sharpe          標準 Sharpe（全日曆交易日，cc_metrics）
+      total           合計報酬（複利，百分比）
+      mdd             最大回撤（複利曲線，百分比）
+      calmar          ann / |mdd|（標準）
+      n_tr / hr       交易筆數 / 勝率
+
+      ── 對照用（不應作為決策依據）──
+      sharpe_active   原 active-only Sharpe
+      total_arithmetic 原算術累加（cumsum）
+    """
+    pnl_pct = bt["daily_pnl"][oos_start:]    # tx_pct 是百分比單位（× 100）
+    tr      = bt["trades"]
+    cum_pct = bt["cum_pnl"]                   # 算術累加，保留供圖表使用
+
     n_tr  = len(tr)
     wins  = sum(1 for t in tr if t["pnl_pct"] > 0)
     hr    = wins / n_tr * 100 if n_tr > 0 else 0.
 
-    act  = pnl[pnl != 0]
-    shrp = 0.
+    # ── 標準計算（cc_metrics）──
+    daily_decimal = pnl_pct / 100.0           # 百分比 → 小數
+    summary = perf_summary(daily_decimal, label="OOS", verbose=False)
+
+    total  = summary["total"]  * 100          # 顯示用：小數 → 百分比
+    sharpe = summary["sharpe"]
+    mdd    = summary["max_dd"] * 100
+    calmar = summary["calmar"]
+    ann    = summary["ann"]    * 100
+
+    # ── 舊版指標（對照用，不應作為決策依據）──
+    total_arithmetic = float(cum_pct[-1])
+    act  = pnl_pct[pnl_pct != 0]
+    sharpe_active = 0.
     if len(act) > 1:
         mu = float(np.mean(act)); sd = float(np.std(act, ddof=1))
-        shrp = mu / sd * math.sqrt(252) if sd > 0 else 0.
+        sharpe_active = mu / sd * math.sqrt(252) if sd > 0 else 0.
 
-    peak  = np.maximum.accumulate(cum)
-    mdd   = float(np.min(cum - peak))
-    adays = int(np.sum(pnl != 0))
-    ann   = total * 252 / max(1, adays)
-    cal   = ann / abs(mdd) if mdd < -1e-6 else float("inf")
-
-    return {"total": total, "n_tr": n_tr, "hr": hr,
-            "sharpe": shrp, "mdd": mdd, "calmar": cal}
+    return {
+        "total":  total,
+        "ann":    ann,
+        "sharpe": sharpe,
+        "mdd":    mdd,
+        "calmar": calmar,
+        "n_tr":   n_tr,
+        "hr":     hr,
+        # ── 對照欄位 ──
+        "sharpe_active":    sharpe_active,
+        "total_arithmetic": total_arithmetic,
+        "n_days":           summary["n_days"],
+        "n_active":         summary["n_active"],
+    }
 
 
 # ── 圖表 ──────────────────────────────────────────────────────────────────────
@@ -496,13 +538,19 @@ def build_report(label, results, best_key, best_oos, best_bt, best_ps,
         "",
         f"| 指標 | OOS 策略 | Buy-Hold TX |",
         f"|------|----------|-------------|",
-        f"| 合計報酬 | {best_ps['total']:+.2f}% | {best_oos['bh_oos']:+.2f}% |",
+        f"| 合計報酬（複利）| {best_ps['total']:+.2f}% | {best_oos['bh_oos']:+.2f}% |",
         f"| 交易次數 | {best_ps['n_tr']} | — |",
         f"| 命中率 | {best_ps['hr']:.0f}% | — |",
-        f"| 年化 Sharpe | {best_ps['sharpe']:+.2f} | — |",
-        f"| 最大回撤 | {best_ps['mdd']:.2f}% | — |",
+        f"| 年化 Sharpe（全日曆日）| {best_ps['sharpe']:+.2f} | — |",
+        f"| 最大回撤（複利曲線）| {best_ps['mdd']:.2f}% | — |",
         f"| Calmar 比率 | {best_ps['calmar']:.2f} | — |",
         f"| sig_dir 切換次數 | {best_oos['n_switches']} | — |",
+        "",
+        "> **指標計算方式（2026-05-29 更新）**：",
+        "> Sharpe 以全部 OOS 交易日計算（cc_metrics 標準），非僅持倉日；",
+        "> 合計報酬以複利累積計算，非算術累加。",
+        f"> 對照值：active-only Sharpe = {best_ps.get('sharpe_active', 0):+.2f}（過往報告引用，已棄用）；",
+        f"> 算術累加 = {best_ps.get('total_arithmetic', 0):+.2f}%（過往報告引用，已棄用）。",
         "",
     ]
 
@@ -735,6 +783,19 @@ def main():
         marker = " ◀" if r["key"] == best_key else ""
         print(f"  {r['key']:10s}  Sharpe {r['sharpe']:+.2f}  MDD {r['mdd']:.1f}%"
               f"  切換{r['n_switches']}次{marker}")
+
+    # ── cc_metrics 一致性硬驗證（2026-05-29 retrofit）─────────────────────────
+    # 確保 stats() 回傳的 sharpe 與 cc_metrics 標準計算一致，
+    # 防止未來有人改回 active-only 計算
+    best_pnl_pct = bbt["daily_pnl"][boo["oos_start"]:]
+    best_daily_decimal = best_pnl_pct / 100.0
+    assert_sharpe_consistency(
+        best_rec["_ps"]["sharpe"], best_daily_decimal,
+        tolerance=0.1, label=f"phase6_{best_key}",
+    )
+    print(f"\n  ✓ cc_metrics 一致性檢查通過：sharpe = {best_rec['_ps']['sharpe']:+.3f}")
+    print(f"    對照 sharpe_active = {best_rec['_ps']['sharpe_active']:+.3f}"
+          f"（若兩者差距 > 0.5，必為 active-only bug 復發）")
 
 
 if __name__ == "__main__":

@@ -29,3 +29,6 @@ if [[ -z "${REPORT_PATH}" ]]; then
 fi
 
 echo "REPORT_PATH=${REPORT_PATH}"
+
+bash "${CC_PROJECT_DIR}/scripts/gdrive_push.sh" "${REPORT_PATH}" 06_exports || \
+  echo "WARNING: gdrive_push 略過（掛載不可用或失敗）" >&2

@@ -125,6 +125,66 @@ git status --short
 - 執行測試前說明會跑什麼、可能耗時多久、是否需要網路或憑證。
 - 若無法執行測試，回報原因與替代驗證方式。
 
+## 研究 Pipeline 強制節點（Phase 6+ Critical Review）
+
+本節是 2026-05-29 dialectical 討論的結論，處理「Sharpe 計算錯誤跑了 3 個 Phase 才被發現」的歷史教訓。
+
+### 第一層：硬機制（必做）
+
+**標準指標模組 `scripts/cc_metrics.py`**
+
+任何 Phase 4+ 回測腳本，**績效指標必須呼叫 `cc_metrics.perf_summary()`**，不得自行計算 Sharpe / Calmar / MDD。模組強制：
+
+- Sharpe 永遠以「全日曆交易日」計算（含零報酬日，禁止 `pnl[pnl != 0]`）
+- 報酬累積使用複利（`(1+r).cumprod()`），禁止算術 `cumsum()`
+- 腳本末尾應呼叫 `assert_sharpe_consistency()` 做硬約束驗證
+
+範例：
+```python
+from cc_metrics import perf_summary, assert_sharpe_consistency
+
+summary = perf_summary(daily_returns, label="W180_C1")
+# ... 生成報告 ...
+assert_sharpe_consistency(summary["sharpe"], daily_returns, label="W180_C1")
+```
+
+**Critical Review 觸發腳本 `automation/scripts/cc_critical_review_trigger.sh`**
+
+Phase 6+ 報告產出後，**老闆手動執行**：
+
+```bash
+cd /home/yc5/workspace/filefold/claude2605
+bash automation/scripts/cc_critical_review_trigger.sh
+# 預設讀取 reports/tw_futures_analysis/；可指定其他目錄
+bash automation/scripts/cc_critical_review_trigger.sh reports/26TW_MARKET_doc
+```
+
+腳本會輸出一份完整 prompt（含必查清單與輸出規格），複製貼進 Claude Code 即可啟動 review。
+**此機制為純 shell 工具，可靠性 95%+，不依賴 LLM 記憶。**
+
+### 第二層：軟提醒（給 Claude Code 看的規則，可靠性 50–65%）
+
+**Phase 編號識別規則**：腳本檔名含 `phase[N]` 即代表該專案的 Phase N。
+
+**強制提醒觸發條件**（同時滿足才觸發）：
+
+1. 老闆要求產出或修改任何 `phase[N]_report*.md`，且 N ≥ 6
+2. 或：老闆說「研究完成」、「報告寫好了」、「下一階段」等收尾語
+
+**Claude Code 必須回應**：
+
+> 「Phase 6+ 報告已產出。建議執行：
+> `bash automation/scripts/cc_critical_review_trigger.sh`
+> 啟動 Critical Review。是否現在執行？」
+
+**老闆若答「不用」或繼續其他話題，視為手動跳過**，但記憶須保留下次 Phase 觸發時再提醒。
+
+### 第三層：歷史教訓備忘（給 review 時參考）
+
+- 2026-05-29：phase6 `stats()` 函式以 `act = pnl[pnl != 0]` 計算 Sharpe，導致 W180_C1 報告值 +3.51 虛高至實際 +1.944（1.81x）。已透過 `cc_metrics` 模組根除此類 bug。
+- 多重比較：Phase 6 測試 9 組組合並選最佳，未做 Bonferroni。任何超參數搜索類 Phase 必須事前聲明選擇規則（中位數 / 校正後最佳值）。
+- 除息季效應：6–9 月 TAIEX 與 TX 基差會系統性偏移，VECM 框架未調整，造成虛假 z-score 信號。
+
 ## 除錯流程
 
 ### 1. 環境確認

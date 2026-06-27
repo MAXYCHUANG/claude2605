@@ -89,13 +89,15 @@ SPOT_PRICE=""
 SNAPSHOT_MD=""
 STAMP=$(TZ=America/New_York date '+%Y%m%d_%H%M%S')
 SNAPSHOT_OUT="/tmp/msft_intraday_snapshot_${STAMP}.md"
-QQQ_MONITOR_OUT="/tmp/qqq_qyld_${SYMBOL,,}_monitor_${STAMP}.md"
+TEMP_OC_MD="/tmp/msft_oc_full_${STAMP}.md"
+CARD_MD="/tmp/msft_card_${STAMP}.md"
 RUN_DATE="$(TZ=America/New_York date '+%Y-%m-%d')"
 COMBINED_MD="${CC_PROJECT_DIR}/reports/msft_options/msft_options_4expiry_${RUN_DATE}.md"
+OI_CACHE_DIR="${CC_PROJECT_DIR}/data/oi_cache"
 mkdir -p "$(dirname "${COMBINED_MD}")"
 HTML_PATH=""
 
-_cleanup() { rm -f "${SNAPSHOT_OUT}" "${QQQ_MONITOR_OUT}" ${HTML_PATH:+"${HTML_PATH}"}; }
+_cleanup() { rm -f "${SNAPSHOT_OUT}" "${TEMP_OC_MD}" "${CARD_MD}" ${HTML_PATH:+"${HTML_PATH}"}; }
 trap _cleanup EXIT
 
 # ── Intraday snapshot ──────────────────────────────────────────────────────
@@ -109,26 +111,6 @@ if SNAP_OUT=$(python3 "${CODEX_DIR}/scripts/us_stock_intraday_snapshot.py" "${SY
 else
     echo "${SNAP_OUT}"
     log "WARN: intraday snapshot failed (continuing)"
-fi
-
-# ── QQQ + QYLD 聯合監控（傳入 MSFT 現價，權重約 8.5%）─────────────────────
-QQQ_MONITOR_MD=""
-if [[ -z "${SPOT_PRICE}" ]]; then
-    log "WARN: no MSFT spot price — skip QQQ+QYLD monitor"
-else
-    QQQ_OUT=""
-    if QQQ_OUT=$(python3 "${CODEX_DIR}/scripts/us_qqq_qyld_monitor.py" \
-        --nvda-spot "${SPOT_PRICE}" \
-        --symbol MSFT \
-        --symbol-weight 0.085 \
-        --output "${QQQ_MONITOR_OUT}" 2>&1); then
-        echo "${QQQ_OUT}"
-        QQQ_MONITOR_MD="${QQQ_MONITOR_OUT}"
-        log "QQQ+QYLD monitor OK: $(basename "${QQQ_MONITOR_OUT}")"
-    else
-        echo "${QQQ_OUT}"
-        log "WARN: QQQ+QYLD monitor failed (continuing)"
-    fi
 fi
 
 for EXPIRY in ${EXPIRIES}; do
@@ -160,31 +142,67 @@ if [[ "${SUCCESS}" -eq 0 ]]; then
     exit 1
 fi
 
-# 合併：快照 + QQQ/QYLD 監控 + MSFT OC 各到期層
+# ── QQQ L1 fetch（大盤燈號，不產生獨立報告）───────────────────────────────────
+QQQ_RPATH=""
+QQQ_EXPIRY="$(echo "${EXPIRIES}" | awk '{print $1}')"
+log "Fetching QQQ L1 (expiry=${QQQ_EXPIRY}) for 大盤燈號..."
+QQQ_FETCH_OUT=""
+if QQQ_FETCH_OUT=$(python3 "${OPTIONS_SCRIPT}" "QQQ" --expiry "${QQQ_EXPIRY}" \
+        --max-rows "${MAX_ROWS}" 2>&1); then
+    echo "${QQQ_FETCH_OUT}"
+    QQQ_RPATH=$(echo "${QQQ_FETCH_OUT}" | grep "^REPORT_PATH=" | cut -d= -f2-)
+    log "QQQ L1 fetch OK"
+else
+    echo "${QQQ_FETCH_OUT}"
+    log "WARN: QQQ L1 fetch failed — 大盤燈號 will show N/A"
+fi
+
+# ── Step 1：全 expiry OC 暫存（用於錨點卡計算）─────────────────────────────
 {
-    echo "# MSFT Options Chain + QQQ/QYLD Monitor — ${RUN_DATE}"
+    echo "# MSFT Options Chain — ${RUN_DATE}"
     echo ""
-    if [[ -n "${SNAPSHOT_MD}" && -f "${SNAPSHOT_MD}" ]]; then
-        cat "${SNAPSHOT_MD}"
-        echo ""
-        echo "---"
-        echo ""
-    fi
-    if [[ -n "${QQQ_MONITOR_MD}" && -f "${QQQ_MONITOR_MD}" ]]; then
-        cat "${QQQ_MONITOR_MD}"
-        echo ""
-        echo "---"
-        echo ""
-    fi
     for RPATH in "${REPORT_PATHS[@]}"; do
         cat "${RPATH}"
         echo ""
         echo "---"
         echo ""
     done
-} > "${COMBINED_MD}"
+} > "${TEMP_OC_MD}"
 
-python3 "${CC_PROJECT_DIR}/scripts/cc_oc_daily_summary.py" "${COMBINED_MD}" || log "WARN: summary append failed (continuing)"
+# ── Step 2：OI 快取（△OI + Beta + HV30）──────────────────────────────────────
+python3 "${CC_PROJECT_DIR}/scripts/cc_oc_cache_writer.py" \
+    --symbol "${SYMBOL}" \
+    --date "${RUN_DATE}" \
+    --combined-md "${TEMP_OC_MD}" \
+    --cache-dir "${OI_CACHE_DIR}" || log "WARN: OI cache write failed (continuing)"
+
+# ── Step 3：生成錨點卡（讀全 expiry 計算 term structure）────────────────────
+CARD_ARGS=(--cache-dir "${OI_CACHE_DIR}" --output "${CARD_MD}")
+[[ -n "${QQQ_RPATH}" ]] && CARD_ARGS+=(--qqq-oc "${QQQ_RPATH}")
+python3 "${CC_PROJECT_DIR}/scripts/cc_oc_daily_summary.py" "${TEMP_OC_MD}" \
+    "${CARD_ARGS[@]}" || log "WARN: anchor card generate failed (continuing)"
+
+# ── Step 4：組合最終報告（錨點卡 → 盤中快照 → L1 OC 原始數據）──────────────
+{
+    echo "# MSFT Options Chain — ${RUN_DATE}"
+    echo ""
+    [[ -f "${CARD_MD}" ]] && cat "${CARD_MD}"
+    if [[ -n "${SNAPSHOT_MD}" && -f "${SNAPSHOT_MD}" ]]; then
+        echo ""
+        echo "---"
+        echo ""
+        cat "${SNAPSHOT_MD}"
+    fi
+    if [[ ${#REPORT_PATHS[@]} -gt 0 && -f "${REPORT_PATHS[0]}" ]]; then
+        echo ""
+        echo "---"
+        echo ""
+        cat "${REPORT_PATHS[0]}"
+    fi
+    echo ""
+    echo "---"
+    echo ""
+} > "${COMBINED_MD}"
 
 HTML_PATH="$(python3 "${CC_PROJECT_DIR}/scripts/cc_md_to_html.py" "${COMBINED_MD}" --print)"
 
